@@ -98,13 +98,21 @@ $$ {#eq-ch10-ir-longtr}
 
 @eq-ch10-ir-longtr is the form nearly everyone writes down, and it is the one the curves on this page are computed from.  It is worth knowing when it fails.  A protocol is designed with TR long compared with the $T_1$ of the tissue of interest, but the same slice usually contains CSF, whose $T_1$ is around 4 s at 3 T.  A TR that is generous for white matter is short for CSF.  @eq-ch10-ir-grouped is the safer choice for simulating an experiment, and the difference between the two shows up exactly where $T_1$ approaches TR.  We will need @eq-ch10-ir-grouped again when we come to FLAIR, which nulls precisely that long-$T_1$ tissue.
 
+<!-- Source: the qMRLab mOOC (https://qmrlab.org/mooc), chapter 2, "T1 Mapping",
+     by Mathieu Boudreau. Reused under its MIT licence. Equation correspondence:
+
+         eq-ch10-ir-general  = mOOC Eq. 2.1
+         eq-ch10-ir-grouped  = mOOC Eq. 2.2
+         eq-ch10-ir-longtr   = mOOC Eq. 2.3
+         eq-ch10-barral      = mOOC Eq. 2.4
+
+     The prose of the signal-equation, data-fitting, benefits-and-pitfalls, and
+     Look-Locker/saturation-recovery sections is adapted from the same chapter.
+     The interactive figure above is the mOOC's Figure 2.3, which is why its own
+     labelling still reads "Eq. 2.1" / "Eq. 2.3": solid = long-TR approximation
+     (eq-ch10-ir-longtr), dashed = general equation (eq-ch10-ir-grouped). -->
+
 {{< include "includes/fig-t1-equations.qmd" >}}
-
-::: {.callout-note}
-## Equations 2.1–2.3 of the qMRLab mOOC
-
-@eq-ch10-ir-general, @eq-ch10-ir-grouped, and @eq-ch10-ir-longtr are Equations 2.1, 2.2, and 2.3 of the [qMRLab mOOC](https://qmrlab.org/mooc) chapter on $T_1$ mapping, whose text is reused here under its MIT licence — which is also where the figure above comes from, and why it carries the mOOC numbering.  Its dashed curve is @eq-ch10-ir-grouped and its solid curve @eq-ch10-ir-longtr, plotted against each other as $T_1$ is varied at fixed TR, which is the fastest way to see how large the discarded term becomes.
-:::
 
 ## The signal magnitude over time
 

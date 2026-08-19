@@ -14,6 +14,20 @@
    Safari, which is what made the strokes disagree between them. */
 .qmrust-figure > div[id^="fig"] { width:100%; }
 .qmrust-figure svg { max-width:100%; height:auto; }
+/* Match Quarto's own figure captions. Without this the caption inherits the
+   root size (17px in the cosmo theme), which is LARGER than the 15.3px body
+   text, in the same dark colour as body prose -- so it reads as another
+   paragraph rather than as a caption. Quarto's .margin-caption resolves to
+   .825rem in the muted grey below; mirroring it keeps the interactive figures
+   consistent with every static figure in the book.
+
+   The caption is prose, not figure chrome, so it takes the book's body font
+   rather than the wrapper's sans-serif stack; `inherit` would pick up the
+   wrapper. The fallback keeps it sane if the theme ever drops the variable. */
+.qmrust-figure .caption { font-size:.825rem; line-height:1.45;
+                          color:hsl(210, 10.3%, 47.7%); margin:10px 0 0;
+                          font-family:var(--bs-body-font-family, inherit); }
+
 .qmrust-figure .eq { font-size:12.5px; color:var(--qmrust-muted); margin:0 0 10px;
                      font-family:ui-monospace,Menlo,monospace; }
 .qmrust-figure .note { font-size:12.5px; color:var(--qmrust-muted); margin:8px 0 0; }

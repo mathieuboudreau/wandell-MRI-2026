@@ -186,19 +186,21 @@
     for (var k = 0; k < t1Count; k++) { t1Values.push(t1Start + k * t1Step); }
 
     var traces = [];
-    // Eq. 2.3, long-TR approximation: a = 1, b = -2.
+    // Long-TR approximation: a = 1, b = -2. (Source chapter's Eq. 2.3; the
+    // legend text below drops that numbering, which means nothing in this book.)
     t1Values.forEach(function (T1) {
       traces.push({ visible: false, x: ti, y: forward(cfg, T1, 1.0, -2.0), mode: "lines",
-                    name: "[Eq. 2.3] – Long TR approximation",
-                    text: "[Eq. 2.3] – Long TR approximation", hoverinfo: "x+y+text" });
+                    name: "Long TR approximation",
+                    text: "Long TR approximation", hoverinfo: "x+y+text" });
     });
-    // Eq. 2.1, general equation with ideal pulses (qMRLab ComputeRaRb).
+    // General equation with ideal pulses (qMRLab ComputeRaRb). Source
+    // chapter's Eq. 2.1; legend numbering dropped, as above.
     t1Values.forEach(function (T1) {
       var ab = raRb(1.0, TR, T1);
       traces.push({ visible: false, x: ti, y: forward(cfg, T1, ab.a, ab.b), mode: "lines",
                     line: { color: "rgb(22, 96, 167)", dash: "dash" },
-                    name: "[Eq. 2.1] – General Equation",
-                    text: "[Eq. 2.1] – General Equation", hoverinfo: "x+y+text" });
+                    name: "General equation",
+                    text: "General equation", hoverinfo: "x+y+text" });
     });
 
     var n = t1Values.length;
