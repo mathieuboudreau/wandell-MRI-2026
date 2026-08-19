@@ -49,3 +49,5 @@ FOV-2025-Quarto.code-workspace
 # Symlinks to instructor-managed teachmri assets, machine-specific
 /code/data
 /code/utility
+
+**/*.quarto_ipynb

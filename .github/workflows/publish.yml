@@ -1,0 +1,73 @@
+name: Publish book to GitHub Pages
+
+# Which refs publish:
+#   - the canonical repository (wandell/MRI-2026): main
+#   - this fork (mathieuboudreau/wandell-MRI-2026): mb/fig_demo
+# Pull requests still build as a render check but never publish.
+on:
+  push:
+    branches:
+      - main
+      - mb/fig_demo
+  pull_request:
+  workflow_dispatch:
+
+# Allow the workflow to publish to Pages via OIDC.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Supersede an earlier build of the same ref; deploys get their own
+# serialised group on the job below so a publish is never cancelled midway.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: quarto-dev/quarto-actions/setup@v2
+
+      # The book is pure markdown -- the {.matlab} blocks in ch19 are
+      # display-only (leading dot = class, not an engine), so no R, Python,
+      # or Jupyter runtime is needed here.
+      - name: Render book
+        run: quarto render
+
+      # _book is ~500 MB, almost all images and video, so the upload is slow.
+      # Skip it on anything that will not go on to deploy.
+      #
+      # The two clauses split canonical from fork because the publishing ref
+      # differs between them. On a pull_request event github.ref is
+      # refs/pull/N/merge, which matches no branch here, so PRs stop at the
+      # render check under either clause.
+      - uses: actions/upload-pages-artifact@v5
+        if: >-
+          ${{ (!github.event.repository.fork && github.ref == 'refs/heads/main')
+              || (github.event.repository.fork
+                  && github.ref == 'refs/heads/mb/fig_demo') }}
+        with:
+          path: _book
+
+  # Publish. Same condition as the upload above -- keep the two in step, or the
+  # deploy will fail looking for an artifact the build chose not to make.
+  deploy:
+    needs: build
+    if: >-
+      ${{ (!github.event.repository.fork && github.ref == 'refs/heads/main')
+          || (github.event.repository.fork
+              && github.ref == 'refs/heads/mb/fig_demo') }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

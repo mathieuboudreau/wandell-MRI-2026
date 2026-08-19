@@ -1,0 +1,287 @@
+::: {.content-visible when-format="html"}
+
+<!-- This include deliberately does NOT load interactive/figures.css,
+     plotly-cartesian.min.js, or qmrust_wasm.js. Its only consumer,
+     chapters/ch10-demo-qmrlab.qmd, already pulls all three in through
+     includes/fig-t1-equations.qmd, which sits earlier on that page.
+     Loading qmrust_wasm.js a second time is not merely wasteful: the file
+     opens with a top-level `let wasm_bindgen`, and a redeclaration in the
+     global lexical scope is a SyntaxError that kills the second script.
+     If this figure is ever used on a page without fig-t1-equations.qmd,
+     those three tags have to come back. -->
+
+<div class="qmrust-figure">
+
+<p id="q-status" style="font-size:12px;color:#6a6a6a;margin:0 0 10px"></p>
+
+<div style="display:flex;flex-wrap:nowrap;gap:16px;align-items:flex-start;overflow-x:auto">
+  <div id="q-curves" style="flex:1 1 430px;min-width:400px"></div>
+  <div id="q-maps"   style="flex:0 0 250px"></div>
+</div>
+
+<div style="margin:10px 0 0;max-width:660px">
+  <label for="q-ti" style="font-size:13px">Inversion time TI = <b><span id="q-tival">1.00</span> s</b></label>
+  <input id="q-ti" type="range" min="0.01" max="5" step="0.01" value="1" style="width:100%">
+</div>
+
+<p class="caption">Left: longitudinal magnetization for three tissues, long-TR inversion recovery, magnitude.
+The three T<sub>1</sub> values are the cluster means of the map on the right, so each curve's
+null marks the TI at which that tissue goes dark in the image. The map has been recalibrated onto
+literature T<sub>1</sub> values, since the VFA fit reads high and increasingly so with T<sub>1</sub>. The dotted line marks the selected TI; moving it does not change the curves.
+Right: the inversion-recovery image produced at the selected TI, voxel by voxel, from a
+T<sub>1</sub> map that qMRust fitted from the MOOC's VFA acquisition ahead of time. The
+inversion-recovery signals themselves are computed by qMRust in WebAssembly as the page loads.</p>
+
+</div>
+
+<script src="interactive/data-t1map.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var TNR = "Times New Roman";
+  var CFGP = { showLink: false, displayModeBar: false, responsive: true };
+  /* The VFA fit of this dataset reads high, and not by a constant factor:
+     k-means (k=3) over its 4668 fitted voxels gives 1.12 / 1.85 / 3.57 s where
+     3 T literature is about 0.90 / 1.35 / 4.00 s. VFA's bias grows with T1, so
+     a single multiplier cannot fix both ends -- it would leave CSF near 2.9 s.
+     Instead the map is warped through those three control points with a
+     monotonic piecewise-linear curve, which is what a T1-dependent calibration
+     actually looks like. The curve values below are the anchors themselves, so
+     the nulls on the left still mark where the image on the right goes dark.
+     This is a pedagogical recalibration, not the raw fit. */
+  var ANCHOR = [                    // [fitted, target] in seconds
+    [0.00, 0.00],
+    [1.12, 0.90],                   // white matter
+    [1.85, 1.35],                   // grey matter
+    [3.57, 4.00]                    // CSF
+  ];
+  function remapT1(x) {
+    for (var i = 1; i < ANCHOR.length; i++) {
+      if (x <= ANCHOR[i][0]) {
+        var x0 = ANCHOR[i-1][0], y0 = ANCHOR[i-1][1];
+        var x1 = ANCHOR[i][0],   y1 = ANCHOR[i][1];
+        return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
+      }
+    }
+    var n = ANCHOR.length - 1;      // extrapolate along the last segment
+    var sx0 = ANCHOR[n-1][0], sy0 = ANCHOR[n-1][1];
+    var sx1 = ANCHOR[n][0],   sy1 = ANCHOR[n][1];
+    return sy1 + (sy1 - sy0) / (sx1 - sx0) * (x - sx1);
+  }
+  var TISSUES = [
+    { label: "White matter",        T1: ANCHOR[1][1] },
+    { label: "Grey matter",         T1: ANCHOR[2][1] },
+    { label: "Cerebrospinal fluid", T1: ANCHOR[3][1] }
+  ];
+  var TI_MAX = 5, NTI = 400;            // TI samples for the drawn curves
+  var NLUT = 150;                       // TI samples for the image lookup
+  var NBIN = 100;                       // T1 bins for the image lookup
+  var MODE = "magnitude";               // this figure shows |Mz| only
+
+  /* ---- thin qmrust wrappers (recipe/forward are private to app-ir.js) ---- */
+  function recipe(ti, method) {
+    return "model: inversion_recovery\nmethod: " + method + "\n" +
+           "inversion_times: [" + ti.map(String).join(", ") + "]\n";
+  }
+  function forward(cfg, t1, a, b) {
+    return JSON.parse(wasm_bindgen.forward(cfg, new Float64Array([t1, a, b]), "", ""))
+             .map(function (s) { return s.value; });
+  }
+  function decodeBase64(b64) {
+    var bin = atob(b64), n = bin.length, out = new Uint8Array(n);
+    for (var i = 0; i < n; i++) { out[i] = bin.charCodeAt(i); }
+    return out;
+  }
+  function grid(flat, nx, ny, offset, stride) {
+    var out = new Array(ny);
+    for (var i = 0; i < ny; i++) {
+      var row = new Array(nx);
+      for (var j = 0; j < nx; j++) { row[j] = flat[offset + (j * ny + (ny - 1 - i)) * stride]; }
+      out[i] = row;
+    }
+    return out.reverse().map(function (r) { return r.reverse(); });
+  }
+  function linspace(a, b, n) {
+    var o = new Array(n), d = (b - a) / (n - 1);
+    for (var i = 0; i < n; i++) { o[i] = a + i * d; }
+    return o;
+  }
+  function axis(extra) {
+    return Object.assign({ showline: true, linecolor: "black", mirror: false,
+      ticks: "outside", tickfont: { family: TNR, size: 13 }, zeroline: false }, extra || {});
+  }
+
+  var tiGrid  = linspace(0.001, TI_MAX, NTI);
+  var lutTi   = linspace(0.001, TI_MAX, NLUT);
+  var curves = {};      // mode -> [ [y per tissue], ... ]
+  var lut = {};         // mode -> Float64Array(NBIN * NLUT)
+  var T1map = null, nx = 0, ny = 0, maskArr = null;
+  var BBOX = null;   // tight crop around the mask
+  var t1Lo = 0.05, t1Hi = 5.0;
+
+  /* ---- one-time Rust work -------------------------------------------------
+     forward() takes a whole list of inversion times, so the entire TI axis for
+     one T1 costs a single call. Precomputing a T1-bin x TI table here keeps the
+     slider instant; per-voxel-per-TI calls would be ~16k per slider tick.
+
+     The cost is essentially linear in NBIN x NLUT, because forward() hands its
+     result back as JSON and the serialise/parse dominates. So the table gets a
+     coarser TI axis than the curves do: the three curves are what the reader
+     actually reads values off, and they are only three calls, so they keep the
+     fine grid. The table only has to look right as a grayscale image, where
+     NBIN sets how finely T1 is banded and NLUT how finely the slider steps. */
+  function precompute() {
+    [MODE].forEach(function (m) {
+      var cfgCurves = recipe(tiGrid, m);
+      curves[m] = TISSUES.map(function (t) { return forward(cfgCurves, t.T1, 1.0, -2.0); });
+      var cfgLut = recipe(lutTi, m);
+      var table = new Float64Array(NBIN * NLUT);
+      for (var b = 0; b < NBIN; b++) {
+        var T1 = t1Lo + (t1Hi - t1Lo) * (b + 0.5) / NBIN;
+        var y = forward(cfgLut, T1, 1.0, -2.0);
+        table.set(y, b * NLUT);
+      }
+      lut[m] = table;
+    });
+  }
+
+  /* The VFA fit is not redone here. utility/precompute-t1map.js runs the same
+     qMRust fit_volume offline and writes interactive/data-t1map.js, so the page
+     loads 47 kB of fitted T1 rather than 277 kB of raw VFA volume. It arrives as
+     raw fitted T1 in seconds, float32, masked voxels only in flat-index order;
+     the recalibration above stays here, where it is visible and can be retuned
+     without regenerating the data. */
+  function loadT1Map() {
+    nx = T1MAP.dims[0]; ny = T1MAP.dims[1];
+    maskArr = decodeBase64(T1MAP.mask);
+    var fit = new Float32Array(decodeBase64(T1MAP.t1).buffer);
+    T1map = new Float64Array(nx * ny);
+    for (var v = 0, k = 0; v < T1map.length; v++) {
+      if (maskArr[v]) { T1map[v] = remapT1(fit[k++]); }
+    }
+  }
+
+  /* The acquisition FOV is mostly empty around the head. Crop to the mask's
+     bounding box so the brain fills the panel rather than a black border. */
+  function computeBBox() {
+    var m = grid(maskArr, nx, ny, 0, 1), pad = 2;
+    var r0 = 1e9, r1 = -1, c0 = 1e9, c1 = -1;
+    for (var i = 0; i < m.length; i++) {
+      for (var j = 0; j < m[i].length; j++) {
+        if (m[i][j]) {
+          if (i < r0) r0 = i; if (i > r1) r1 = i;
+          if (j < c0) c0 = j; if (j > c1) c1 = j;
+        }
+      }
+    }
+    if (r1 < 0) { BBOX = null; return; }
+    BBOX = { r0: Math.max(0, r0 - pad), r1: Math.min(m.length - 1, r1 + pad),
+             c0: Math.max(0, c0 - pad), c1: Math.min(m[0].length - 1, c1 + pad) };
+  }
+  function cropGrid(g) {
+    if (!BBOX) { return g; }
+    return g.slice(BBOX.r0, BBOX.r1 + 1).map(function (row) {
+      return row.slice(BBOX.c0, BBOX.c1 + 1);
+    });
+  }
+
+  /** Synthetic IR image at one TI, read out of the precomputed Rust table. */
+  function irImage(ti) {
+    var k = Math.round((ti - lutTi[0]) / (lutTi[1] - lutTi[0]));
+    k = Math.max(0, Math.min(NLUT - 1, k));
+    var table = lut[MODE], out = new Array(T1map.length);
+    for (var v = 0; v < T1map.length; v++) {
+      if (!maskArr[v] || !Number.isFinite(T1map[v]) || T1map[v] <= 0) { out[v] = null; continue; }
+      var b = Math.floor((T1map[v] - t1Lo) / (t1Hi - t1Lo) * NBIN);
+      b = Math.max(0, Math.min(NBIN - 1, b));
+      out[v] = table[b * NLUT + k];
+    }
+    return out;
+  }
+
+  function drawCurves(ti) {
+    var traces = TISSUES.map(function (t, i) {
+      var name = "T<sub>1</sub> = " + t.T1.toFixed(2) + " s (" + t.label + ")";
+      return { x: tiGrid, y: curves[MODE][i], mode: "lines", name: name, text: name,
+               hoverinfo: "x+y+text" };
+    });
+    var yTitle = "|M<sub>z</sub>|";
+    Plotly.react("q-curves", traces, {
+      width: 430, height: 330, margin: { l: 55, r: 8, b: 50, t: 10 },
+      xaxis: axis({ title: { text: "Inversion Time – TI (s)", font: { family: TNR, size: 15 } } }),
+      yaxis: axis({ title: { text: yTitle, font: { family: TNR, size: 15 } },
+                    range: [0, 1.05] }),
+      // About as low as it goes: the CSF curve's right-hand tail reaches
+      // |Mz| = 0.43 at TI = 5 s, which is y = 0.41 on this axis.
+      legend: { x: 1, y: 0.41, xanchor: "right", yanchor: "bottom",
+                font: { family: TNR, size: 11 }, bgcolor: "rgba(255,255,255,0.75)" },
+      shapes: [{ type: "line", x0: ti, x1: ti, yref: "paper", y0: 0, y1: 1,
+                 line: { color: "#444", width: 1.5, dash: "dot" } }],
+      plot_bgcolor: "white", paper_bgcolor: "white"
+    }, CFGP);
+  }
+
+  function drawMaps(ti) {
+    var blank = { showgrid: false, zeroline: false, showticklabels: false, ticks: "" };
+    // The T1 map supplies the per-voxel T1 the inversion-recovery image is
+    // computed from; it is not itself displayed.
+    var traces = [
+      { type: "heatmap", z: cropGrid(grid(irImage(ti), nx, ny, 0, 1)),
+        colorscale: [[0, "rgb(0,0,0)"], [1, "rgb(255,255,255)"]],
+        zmin: 0, zmax: 1,
+        colorbar: { title: { text: "|S|", side: "top", font: { family: TNR, size: 13 } },
+                    thickness: 7, len: 0.72 },
+        hovertemplate: "|S| = %{z:.2f}<extra></extra>" }
+    ];
+    Plotly.react("q-maps", traces, {
+      width: 250, height: 330, margin: { t: 30, r: 2, b: 6, l: 2 },
+      annotations: [
+        { text: "IR image at TI = " + ti.toFixed(2) + " s", x: 0.5, y: 1.10,
+          xref: "paper", yref: "paper", showarrow: false,
+          font: { family: TNR, size: 15 } }
+      ],
+      xaxis: Object.assign({ domain: [0, 0.88] }, blank),
+      yaxis: Object.assign({ domain: [0, 1], scaleanchor: "x" }, blank),
+      plot_bgcolor: "white", paper_bgcolor: "white"
+    }, CFGP);
+  }
+
+  function redraw() {
+    var ti = parseFloat($("q-ti").value);
+    $("q-tival").textContent = ti.toFixed(2);
+    drawCurves(ti);
+    drawMaps(ti);
+  }
+
+  window.addEventListener("load", function () {
+    if (typeof Plotly === "undefined") { $("q-status").textContent = "Plotly failed to load."; return; }
+    $("q-status").textContent = "Starting qMRust…";
+    wasm_bindgen({ module_or_path: "interactive/qmrust_wasm_bg.wasm" }).then(function () {
+      $("q-status").textContent = "Precomputing signal tables in Rust…";
+      setTimeout(function () {
+        var t0 = performance.now();
+        precompute();
+        $("q-status").textContent = "Loading the precomputed T₁ map…";
+        setTimeout(function () {
+          loadT1Map();
+          computeBBox();
+          $("q-status").textContent = "Ready — inversion-recovery signals computed in " +
+            "Rust/WebAssembly in " + (performance.now() - t0).toFixed(0) + " ms";
+          redraw();
+          $("q-ti").addEventListener("input", redraw);
+        }, 20);
+      }, 20);
+    }).catch(function (e) {
+      $("q-status").textContent = "qMRust failed to start: " + e;
+      console.error(e);
+    });
+  });
+})();
+</script>
+
+:::
+
+::: {.content-visible when-format="pdf"}
+*Interactive figure — available in the HTML edition only.*
+:::
