@@ -117,7 +117,7 @@ $$ {#eq-ch10-ir-longtr}
 :::: {#fig-ch10-ir-equations}
 {{< include "includes/fig-t1-equations.qmd" >}}
 
-Signal recovery curves simulated using the long-TR approximation (solid, @eq-ch10-ir-longtr) and the general equation (dashed, @eq-ch10-ir-grouped) with TR = 5 s, for $T_1$ values between 0.25 and 5 s. Drag the slider to change $T_1$.
+Signal recovery curves simulated using the long-TR approximation (solid, @eq-ch10-ir-longtr) and the general equation (dashed, @eq-ch10-ir-grouped) with TR = 5 s, for $T_1$ values between 0.25 and 5 s. Drag the slider to change $T_1$.  After Figure 2.3 of the [qMRLab mOOC](https://qmrlab.org/mooc), CC BY 4.0.
 ::::
 
 ## The signal magnitude over time
@@ -137,7 +137,7 @@ The graphs above plot $M_z$ itself, with the values before the zero crossing sho
 :::: {#fig-ch10-mag-vs-signal}
 {{< include "includes/fig-ir-mag-vs-signal.qmd" >}}
 
-The same inversion recovery experiment read two ways, at a single inversion time TI = 0.76 s (dotted line). **Magnetization** plots $M_z$ itself, which is negative before a tissue passes through its null. **Signal** plots $|M_z|$, which is what a magnitude image records. This TI is chosen because white matter and grey matter sit equal and opposite there, $M_z = +0.14$ and $-0.14$: they are strongly distinguishable in the magnetization image and indistinguishable in the magnitude image, which is the price the fold exacts. The vertical axis of the plot is held at $[-1, 1]$ in both cases so the curves can be seen flipping upward rather than being rescaled; the image, by contrast, is windowed to $[-1, 1]$ for magnetization and $[0, 1]$ for signal.
+The same inversion recovery experiment read two ways, at a single inversion time TI = 0.76 s (dotted line). **Magnetization** plots $M_z$ itself, which is negative before a tissue passes through its null. **Signal** plots $|M_z|$, which is what a magnitude image records. This TI is chosen because white matter and grey matter sit equal and opposite there, $M_z = +0.14$ and $-0.14$: they are strongly distinguishable in the magnetization image and indistinguishable in the magnitude image, which is the price the fold exacts. The vertical axis of the plot is held at $[-1, 1]$ in both cases so the curves can be seen flipping upward rather than being rescaled; the image, by contrast, is windowed to $[-1, 1]$ for magnetization and $[0, 1]$ for signal.  Brain data from the [qMRLab mOOC](https://qmrlab.org/mooc), CC BY 4.0.
 ::::
 
 Sweeping TI across the whole recovery, rather than fixing it, is what @fig-ch10-ti-contrast does.
@@ -149,7 +149,7 @@ Two consequences follow from the fold, and both come back later.  The measured c
 :::: {#fig-ch10-ti-contrast}
 {{< include "includes/fig-qmrlab-demo.qmd" >}}
 
-Left: longitudinal magnetization for three tissues, long-TR inversion recovery, magnitude. The three $T_1$ values are the cluster means of the map on the right, so each curve's null marks the TI at which that tissue goes dark in the image. The map has been recalibrated onto literature $T_1$ values, since the VFA fit reads high and increasingly so with $T_1$. The dotted line marks the selected TI; moving it does not change the curves. Right: the inversion-recovery image produced at the selected TI, voxel by voxel, from a $T_1$ map that qMRust fitted from a variable-flip-angle acquisition ahead of time. The inversion-recovery signals themselves are computed by qMRust in WebAssembly as the page loads.
+Left: longitudinal magnetization for three tissues, long-TR inversion recovery, magnitude. The three $T_1$ values are the cluster means of the map on the right, so each curve's null marks the TI at which that tissue goes dark in the image. The map has been recalibrated onto literature $T_1$ values, since the VFA fit reads high and increasingly so with $T_1$. The dotted line marks the selected TI; moving it does not change the curves. Right: the inversion-recovery image produced at the selected TI, voxel by voxel, from a $T_1$ map that qMRust fitted from a variable-flip-angle acquisition ahead of time. The inversion-recovery signals themselves are computed by qMRust in WebAssembly as the page loads.  Brain data from the [qMRLab mOOC](https://qmrlab.org/mooc), CC BY 4.0.
 ::::
 
 After the 180 deg pulse every tissue starts the same climb from $-M_0$, but each recovers on its own $T_1$, so the gaps between them open and close as the longitudinal recovery proceeds.  The 90 deg pulse samples those gaps: whatever ordering the tissues happen to have at time TI is the contrast written into the image.  TI is the contrast control for this sequence, in the way TE is for a spin echo.
@@ -236,7 +236,7 @@ Why not simply use $0.69\,T_1$?  Because CSF is the case where @eq-ch10-ir-longt
 :::: {#fig-ch10-flair-protocol}
 {{< include "includes/fig-flair-protocol.qmd" >}}
 
-Designing a FLAIR protocol on a brain carrying two synthetic periventricular lesions, at a fixed TR of 10 s. Left: signal magnitude against inversion time for white matter, grey matter, cerebrospinal fluid and lesion, at the chosen TE; the dotted line is the chosen TI and the open circle is where @eq-ch10-null-general puts the CSF null. Right: the image that protocol produces. It opens on a protocol that is wrong in both respects — TI = 0.60 s leaves the ventricles bright, and TE = 8 ms leaves the lesions indistinguishable from the white matter around them. **Null CSF + T2-weight** sets both at once: TI from the nulling condition rather than from $0.69\,T_1$, which for CSF is far too long, and TE out to 150 ms. Either alone is not enough, which is the difference between a T1-FLAIR and a T2-FLAIR. Lesion tissue follows the qMRLab class example: $T_1$ raised 10% and $T_2$ doubled over the white matter it replaces, with $T_2$ taken as $T_1/10$ throughout.
+Designing a FLAIR protocol on a brain carrying two synthetic periventricular lesions, at a fixed TR of 10 s. Left: signal magnitude against inversion time for white matter, grey matter, cerebrospinal fluid and lesion, at the chosen TE; the dotted line is the chosen TI and the open circle is where @eq-ch10-null-general puts the CSF null. Right: the image that protocol produces. It opens on a protocol that is wrong in both respects — TI = 0.60 s leaves the ventricles bright, and TE = 8 ms leaves the lesions indistinguishable from the white matter around them. **Null CSF + T2-weight** sets both at once: TI from the nulling condition rather than from $0.69\,T_1$, which for CSF is far too long, and TE out to 150 ms. Either alone is not enough, which is the difference between a T1-FLAIR and a T2-FLAIR. Lesion tissue follows the T1 class application example in the [qMRLab mOOC](https://qmrlab.org/mooc), CC BY 4.0, from which this figure is adapted: $T_1$ raised 10% and $T_2$ doubled over the white matter it replaces, with $T_2$ taken as $T_1/10$ throughout.
 ::::
 
 ![Fluid attenuated inversion recovery (FLAIR).](images/ch10/fluid-attenuated-inversion-recovery-flair.png){#fig-ch10-fluid-attenuated-inversion-recovery-flair}
