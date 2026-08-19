@@ -99,7 +99,9 @@ $$ {#eq-ch10-ir-longtr}
 @eq-ch10-ir-longtr is the form nearly everyone writes down, and it is the one the curves on this page are computed from.  It is worth knowing when it fails.  A protocol is designed with TR long compared with the $T_1$ of the tissue of interest, but the same slice usually contains CSF, whose $T_1$ is around 4 s at 3 T.  A TR that is generous for white matter is short for CSF.  @eq-ch10-ir-grouped is the safer choice for simulating an experiment, and the difference between the two shows up exactly where $T_1$ approaches TR — @fig-ch10-ir-equations plots one against the other as $T_1$ is varied at fixed TR, which is the quickest way to see how large the discarded term gets.  We will need @eq-ch10-ir-grouped again when we come to FLAIR, which nulls precisely that long-$T_1$ tissue.
 
 <!-- Source: the qMRLab mOOC (https://qmrlab.org/mooc), chapter 2, "T1 Mapping",
-     by Mathieu Boudreau. Reused under its MIT licence. Equation correspondence:
+     by Mathieu Boudreau. Reused under CC BY 4.0; see THIRD-PARTY-NOTICES.md at
+     the repository root for the attribution and the list of changes made.
+     Equation correspondence:
 
          eq-ch10-ir-general  = mOOC Eq. 2.1
          eq-ch10-ir-grouped  = mOOC Eq. 2.2

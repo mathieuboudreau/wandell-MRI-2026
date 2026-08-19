@@ -1,5 +1,9 @@
 #!/usr/bin/env node
-/* Precompute the VFA T1 map that chapters/includes/fig-qmrlab-demo.qmd used to
+/* Input data lives beside this script rather than in chapters/interactive/,
+   which Quarto publishes wholesale: data-vfa.js is only ever read here, so
+   shipping its 277 kB to every reader bought nothing.
+
+   Precompute the VFA T1 map that chapters/includes/fig-qmrlab-demo.qmd used to
    fit in the browser on every page load.
 
    The figure only ever needs the fitted T1 per voxel, so the fit is done once
@@ -39,7 +43,7 @@ function decodeBase64(b64) {
 
 (async function main() {
   const wasm_bindgen = loadScript(path.join(INTERACTIVE, "qmrust_wasm.js"), "wasm_bindgen");
-  const VFA = loadScript(path.join(INTERACTIVE, "data-vfa.js"), "VFA");
+  const VFA = loadScript(path.join(__dirname, "data-vfa.js"), "VFA");
 
   await wasm_bindgen({
     module_or_path: fs.readFileSync(path.join(INTERACTIVE, "qmrust_wasm_bg.wasm"))

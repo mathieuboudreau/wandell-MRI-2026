@@ -8,6 +8,9 @@
  *
  * Depends on qmrust_wasm.js (for wasm_bindgen) and data-t1map.js (for T1MAP),
  * both of which the page must have loaded first.
+ *
+ * Licences for the vendored qMRust and Plotly files in this directory, and for
+ * the mOOC material the ch10 text draws on, are in THIRD-PARTY-NOTICES.md.
  */
 window.IR = (function () {
   "use strict";
