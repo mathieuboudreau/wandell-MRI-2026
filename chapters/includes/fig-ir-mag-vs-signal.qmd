@@ -1,5 +1,10 @@
 ::: {.content-visible when-format="html"}
 
+<!-- No caption here. This include is wrapped in a Quarto figure div in
+     ch10-inversion-recovery.qmd, which supplies the caption so the figure
+     is numbered and cross-referenceable like every other figure in the
+     book. Adding a <p class="caption"> back would double it up. -->
+
 <!-- This is the first qmrust figure on the page that needs the T1 map, so it
      loads data-t1map.js and ir-shared.js. It does NOT load figures.css,
      plotly-cartesian.min.js, or qmrust_wasm.js -- includes/fig-t1-equations.qmd
@@ -22,16 +27,6 @@
   <div id="m-maps"   style="flex:0 0 250px"></div>
 </div>
 
-<p class="caption">The same inversion recovery experiment read two ways, at a single
-inversion time TI = 0.76 s (dotted line). <b>Magnetization</b> plots
-<i>M</i><sub>z</sub> itself, which is negative before a tissue passes through its null.
-<b>Signal</b> plots |<i>M</i><sub>z</sub>|, which is what a magnitude image records.
-This TI is chosen because white matter and grey matter sit equal and opposite there,
-<i>M</i><sub>z</sub> = +0.14 and −0.14: they are strongly distinguishable in the
-magnetization image and indistinguishable in the magnitude image, which is the price
-the fold exacts. The vertical axis of the plot is held at [−1, 1] in both cases so the
-curves can be seen flipping upward rather than being rescaled; the image, by contrast,
-is windowed to [−1, 1] for magnetization and [0, 1] for signal.</p>
 
 </div>
 

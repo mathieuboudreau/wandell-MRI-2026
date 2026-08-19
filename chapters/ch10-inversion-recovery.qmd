@@ -96,7 +96,7 @@ $$
 M_z(\mathrm{TI}) = C\left(1 - 2e^{-\mathrm{TI}/T_1}\right)
 $$ {#eq-ch10-ir-longtr}
 
-@eq-ch10-ir-longtr is the form nearly everyone writes down, and it is the one the curves on this page are computed from.  It is worth knowing when it fails.  A protocol is designed with TR long compared with the $T_1$ of the tissue of interest, but the same slice usually contains CSF, whose $T_1$ is around 4 s at 3 T.  A TR that is generous for white matter is short for CSF.  @eq-ch10-ir-grouped is the safer choice for simulating an experiment, and the difference between the two shows up exactly where $T_1$ approaches TR.  We will need @eq-ch10-ir-grouped again when we come to FLAIR, which nulls precisely that long-$T_1$ tissue.
+@eq-ch10-ir-longtr is the form nearly everyone writes down, and it is the one the curves on this page are computed from.  It is worth knowing when it fails.  A protocol is designed with TR long compared with the $T_1$ of the tissue of interest, but the same slice usually contains CSF, whose $T_1$ is around 4 s at 3 T.  A TR that is generous for white matter is short for CSF.  @eq-ch10-ir-grouped is the safer choice for simulating an experiment, and the difference between the two shows up exactly where $T_1$ approaches TR — @fig-ch10-ir-equations plots one against the other as $T_1$ is varied at fixed TR, which is the quickest way to see how large the discarded term gets.  We will need @eq-ch10-ir-grouped again when we come to FLAIR, which nulls precisely that long-$T_1$ tissue.
 
 <!-- Source: the qMRLab mOOC (https://qmrlab.org/mooc), chapter 2, "T1 Mapping",
      by Mathieu Boudreau. Reused under its MIT licence. Equation correspondence:
@@ -108,11 +108,15 @@ $$ {#eq-ch10-ir-longtr}
 
      The prose of the signal-equation, data-fitting, benefits-and-pitfalls, and
      Look-Locker/saturation-recovery sections is adapted from the same chapter.
-     The interactive figure above is the mOOC's Figure 2.3, which is why its own
+     The interactive figure below is the mOOC's Figure 2.3, which is why its own
      labelling still reads "Eq. 2.1" / "Eq. 2.3": solid = long-TR approximation
      (eq-ch10-ir-longtr), dashed = general equation (eq-ch10-ir-grouped). -->
 
+:::: {#fig-ch10-ir-equations}
 {{< include "includes/fig-t1-equations.qmd" >}}
+
+Signal recovery curves simulated using the long-TR approximation (solid, @eq-ch10-ir-longtr) and the general equation (dashed, @eq-ch10-ir-grouped) with TR = 5 s, for $T_1$ values between 0.25 and 5 s. Drag the slider to change $T_1$.
+::::
 
 ## The signal magnitude over time
 
@@ -126,19 +130,29 @@ $$ {#eq-ch10-null-longtr}
 
 The presence of the zero-crossing makes the sequence particularly useful: choosing the inversion time TI so that a particular tissue is passing through zero suppresses that tissue entirely.
 
-The graphs above plot $M_z$ itself, with the values before the zero crossing shown as negative.  The scanner records a complex signal, but inversion recovery protocols usually store magnitude images, and a magnitude is always positive.  Taking the absolute value folds the negative part of the recovery upward, so the measured curve descends to zero at $\mathrm{TI}_{\text{null}}$ and then climbs again — the V shape on the right.  The position of that null is a direct read on $T_1$, and tissues with different $T_1$ values null at different inversion times.
+The graphs above plot $M_z$ itself, with the values before the zero crossing shown as negative.  The scanner records a complex signal, but inversion recovery protocols usually store magnitude images, and a magnitude is always positive.  Taking the absolute value folds the negative part of the recovery upward, so the measured curve descends to zero at $\mathrm{TI}_{\text{null}}$ and then climbs again — the V shape on the right.  The position of that null is a direct read on $T_1$, and tissues with different $T_1$ values null at different inversion times.  @fig-ch10-mag-vs-signal switches between the two views at a single inversion time, chosen so that white matter and grey matter sit equal and opposite: they are easy to tell apart in the magnetization and identical once the magnitude is taken.
 
+:::: {#fig-ch10-mag-vs-signal}
 {{< include "includes/fig-ir-mag-vs-signal.qmd" >}}
+
+The same inversion recovery experiment read two ways, at a single inversion time TI = 0.76 s (dotted line). **Magnetization** plots $M_z$ itself, which is negative before a tissue passes through its null. **Signal** plots $|M_z|$, which is what a magnitude image records. This TI is chosen because white matter and grey matter sit equal and opposite there, $M_z = +0.14$ and $-0.14$: they are strongly distinguishable in the magnetization image and indistinguishable in the magnitude image, which is the price the fold exacts. The vertical axis of the plot is held at $[-1, 1]$ in both cases so the curves can be seen flipping upward rather than being rescaled; the image, by contrast, is windowed to $[-1, 1]$ for magnetization and $[0, 1]$ for signal.
+::::
+
+Sweeping TI across the whole recovery, rather than fixing it, is what @fig-ch10-ti-contrast does.
 
 Two consequences follow from the fold, and both come back later.  The measured curve is no longer a single exponential, so it cannot be fitted as one without first restoring the sign of the early points (@sec-ch10-t1-map).  And the null is not really a zero in the data: noise in a magnitude image is Rician, which keeps the measured value above zero even where the true signal vanishes, so the bottom of the V is the least reliable part of the curve.
 
 ## The contrast changes for different TI (inversion times)
 
+:::: {#fig-ch10-ti-contrast}
 {{< include "includes/fig-qmrlab-demo.qmd" >}}
+
+Left: longitudinal magnetization for three tissues, long-TR inversion recovery, magnitude. The three $T_1$ values are the cluster means of the map on the right, so each curve's null marks the TI at which that tissue goes dark in the image. The map has been recalibrated onto literature $T_1$ values, since the VFA fit reads high and increasingly so with $T_1$. The dotted line marks the selected TI; moving it does not change the curves. Right: the inversion-recovery image produced at the selected TI, voxel by voxel, from a $T_1$ map that qMRust fitted from a variable-flip-angle acquisition ahead of time. The inversion-recovery signals themselves are computed by qMRust in WebAssembly as the page loads.
+::::
 
 After the 180 deg pulse every tissue starts the same climb from $-M_0$, but each recovers on its own $T_1$, so the gaps between them open and close as the longitudinal recovery proceeds.  The 90 deg pulse samples those gaps: whatever ordering the tissues happen to have at time TI is the contrast written into the image.  TI is the contrast control for this sequence, in the way TE is for a spin echo.
 
-The slider walks through it, using @eq-ch10-ir-longtr with the three $T_1$ values named in the caption.  At TI = 200 ms all three tissues are still on the inverted part of the recovery, so the one that has recovered least is the most negative and therefore has the largest magnitude: the image runs bright to dark from cerebrospinal fluid ($|M_z| = 0.90$) through grey matter (0.72) to white matter (0.60).  Over the next few hundred milliseconds white matter falls quickly while CSF barely moves, so that spread *widens* — by TI = 400 ms it runs 0.81 to 0.28.  At TI = 624 ms white matter reaches its null, $0.69\,T_1$ with $T_1 = 0.90$ s, and drops out of the image altogether.  By TI = 936 ms it is grey matter's turn, and white matter — now recovering on the positive side of the curve — has become the brighter of the two.  The two tissues have swapped places in the image without anything about the tissue having changed.
+The slider in @fig-ch10-ti-contrast walks through it, using @eq-ch10-ir-longtr with the three $T_1$ values named in the caption.  At TI = 200 ms all three tissues are still on the inverted part of the recovery, so the one that has recovered least is the most negative and therefore has the largest magnitude: the image runs bright to dark from cerebrospinal fluid ($|M_z| = 0.90$) through grey matter (0.72) to white matter (0.60).  Over the next few hundred milliseconds white matter falls quickly while CSF barely moves, so that spread *widens* — by TI = 400 ms it runs 0.81 to 0.28.  At TI = 624 ms white matter reaches its null, $0.69\,T_1$ with $T_1 = 0.90$ s, and drops out of the image altogether.  By TI = 936 ms it is grey matter's turn, and white matter — now recovering on the positive side of the curve — has become the brighter of the two.  The two tissues have swapped places in the image without anything about the tissue having changed.
 
 CSF, with the longest $T_1$ of the three, nulls much later still: $0.69 \times 4.0\ \mathrm{s} \approx 2.8$ s in this long-TR figure.  Fat behaves the same way at the other end.  Its $T_1$ is a few hundred milliseconds, much shorter than white matter's, so it nulls first — which is what a short-TI inversion recovery sequence exploits to suppress fat.
 
@@ -200,16 +214,28 @@ Radiologists use the null in the opposite direction from the $T_1$ mapper.  Inst
 The nulling condition is the signal equation of @sec-ch10-signal-equation set to zero.  Using @eq-ch10-ir-grouped,
 
 $$
-1 - 2e^{-\mathrm{TI}/T_1} + e^{-\mathrm{TR}'/T_1} = 0
+1 - 2e^{-\mathrm{TI}/T_1} + e^{-(\mathrm{TR}-\mathrm{TE}_{\text{last}})/T_1} = 0
 \quad\Longrightarrow\quad
-\mathrm{TI}_{\text{null}} = T_1\ln\!\left(\frac{2}{1+e^{-\mathrm{TR}'/T_1}}\right)
+\mathrm{TI}_{\text{null}} = T_1\ln\!\left(\frac{2}{1+e^{-(\mathrm{TR}-\mathrm{TE}_{\text{last}})/T_1}}\right)
 $$ {#eq-ch10-null-general}
 
-where $T_1$ is that of the tissue to be suppressed.  The recovery interval $\mathrm{TR}'$ is written as $\mathrm{TR} - \mathrm{TE}_{\text{last}}$ on the slide because the readout is a fast spin-echo train: the longitudinal magnetization is only free to recover from the last echo of one repetition until the inversion pulse of the next, not for the whole TR.
+where $T_1$ is that of the tissue to be suppressed, and $\mathrm{TE}_{\text{last}}$ is the last echo time of the fast spin-echo readout, as written on @fig-ch10-t1-flair-fluid-attenuated-inversion-recovery-2.
 
-Why not simply use $0.69\,T_1$?  Because CSF is the case where @eq-ch10-ir-longtr fails.  Its $T_1$ is around 4 s, so @eq-ch10-null-longtr would put the null at about 2.8 s — longer than the entire repetition time of many sequences.  @eq-ch10-null-general gives shorter answers, and gives the ones actually used.  For a T2-FLAIR, whose TR is long — 8 to 10 s is typical — it puts the CSF null between about 2.3 and 2.5 s, bracketing the TI = 2300 ms labelled on @fig-ch10-fluid-attenuated-inversion-recovery-flair.  For a T1-FLAIR, where TR and TE are both kept short to avoid $T_2$ weighting, a recovery interval near 2 s brings the null down to roughly 0.85–0.95 s — the 800–1000 ms range quoted on the slide.  The same equation and the same tissue give inversion times that differ by a factor of nearly three, because the term @eq-ch10-ir-longtr discards is the dominant correction whenever $T_1$ is comparable to TR.
+<!-- The slide states the TR - TElast substitution without justifying it, and no
+     source in the bibliography supports a justification, so none is given here.
+     An explanation written for this chapter stood here and was removed: it was
+     wrong about which interval has that duration. Do not reinstate one without
+     a citation to check it against. Note also that the notation is the slide's,
+     deliberately -- an earlier draft abbreviated it to TR', which then appeared
+     in the equation with nothing defining it. -->
 
+Why not simply use $0.69\,T_1$?  Because CSF is the case where @eq-ch10-ir-longtr fails.  Its $T_1$ is around 4 s, so @eq-ch10-null-longtr would put the null at about 2.8 s — longer than the entire repetition time of many sequences.  @eq-ch10-null-general gives shorter answers, and gives the ones actually used.  For a T2-FLAIR, whose TR is long — 8 to 10 s is typical — it puts the CSF null between about 2.3 and 2.5 s, bracketing the TI = 2300 ms labelled on @fig-ch10-fluid-attenuated-inversion-recovery-flair.  For a T1-FLAIR, where TR and TE are both kept short to avoid $T_2$ weighting, with $\mathrm{TR} - \mathrm{TE}_{\text{last}}$ near 2 s the null comes down to roughly 0.85–0.95 s — the 800–1000 ms range quoted on the slide.  The same equation and the same tissue give inversion times that differ by a factor of nearly three, because the term @eq-ch10-ir-longtr discards is the dominant correction whenever $T_1$ is comparable to TR.  Nulling the fluid is only half of a FLAIR protocol, though, and @fig-ch10-flair-protocol is the other half: it carries two periventricular lesions, and setting TI alone leaves them invisible until TE is stretched out as well.
+
+:::: {#fig-ch10-flair-protocol}
 {{< include "includes/fig-flair-protocol.qmd" >}}
+
+Designing a FLAIR protocol on a brain carrying two synthetic periventricular lesions, at a fixed TR of 10 s. Left: signal magnitude against inversion time for white matter, grey matter, cerebrospinal fluid and lesion, at the chosen TE; the dotted line is the chosen TI and the open circle is where @eq-ch10-null-general puts the CSF null. Right: the image that protocol produces. It opens on a protocol that is wrong in both respects — TI = 0.60 s leaves the ventricles bright, and TE = 8 ms leaves the lesions indistinguishable from the white matter around them. **Null CSF + T2-weight** sets both at once: TI from the nulling condition rather than from $0.69\,T_1$, which for CSF is far too long, and TE out to 150 ms. Either alone is not enough, which is the difference between a T1-FLAIR and a T2-FLAIR. Lesion tissue follows the qMRLab class example: $T_1$ raised 10% and $T_2$ doubled over the white matter it replaces, with $T_2$ taken as $T_1/10$ throughout.
+::::
 
 ![Fluid attenuated inversion recovery (FLAIR).](images/ch10/fluid-attenuated-inversion-recovery-flair.png){#fig-ch10-fluid-attenuated-inversion-recovery-flair}
 

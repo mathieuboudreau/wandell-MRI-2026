@@ -1,5 +1,10 @@
 ::: {.content-visible when-format="html"}
 
+<!-- No caption here. This include is wrapped in a Quarto figure div in
+     ch10-inversion-recovery.qmd, which supplies the caption so the figure
+     is numbered and cross-referenceable like every other figure in the
+     book. Adding a <p class="caption"> back would double it up. -->
+
 <!-- This include loads no shared assets of its own. Its only consumer,
      chapters/ch10-inversion-recovery.qmd, has already pulled them in by the
      time it appears: figures.css, plotly-cartesian.min.js and qmrust_wasm.js
@@ -26,13 +31,6 @@
   <input id="q-ti" type="range" min="0.01" max="5" step="0.01" value="1" style="width:100%">
 </div>
 
-<p class="caption">Left: longitudinal magnetization for three tissues, long-TR inversion recovery, magnitude.
-The three T<sub>1</sub> values are the cluster means of the map on the right, so each curve's
-null marks the TI at which that tissue goes dark in the image. The map has been recalibrated onto
-literature T<sub>1</sub> values, since the VFA fit reads high and increasingly so with T<sub>1</sub>. The dotted line marks the selected TI; moving it does not change the curves.
-Right: the inversion-recovery image produced at the selected TI, voxel by voxel, from a
-T<sub>1</sub> map that qMRust fitted from a variable-flip-angle acquisition ahead of time. The
-inversion-recovery signals themselves are computed by qMRust in WebAssembly as the page loads.</p>
 
 </div>
 

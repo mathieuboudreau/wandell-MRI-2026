@@ -1,10 +1,14 @@
 ::: {.content-visible when-format="html"}
 
+<!-- No caption here. This include is wrapped in a Quarto figure div in
+     ch10-inversion-recovery.qmd, which supplies the caption so the figure
+     is numbered and cross-referenceable like every other figure in the
+     book. Adding a <p class="caption"> back would double it up. -->
+
 <link rel="stylesheet" href="interactive/figures.css">
 
 <div class="qmrust-figure">
 <div id="fig23"></div>
-<p class="caption">Signal recovery curves simulated using the long-TR approximation (solid) and the general equation (dashed) with TR = 5 s, for <i>T</i><sub>1</sub> values between 0.25 and 5 s. Drag the slider to change <i>T</i><sub>1</sub>.</p>
 <div class="panel" id="f23panel" hidden>
   <div><label>TR (s)</label><input id="f23tr" type="number" step="0.5" value="5.0"></div>
   <div><label>T<sub>1</sub> start (s)</label><input id="f23t1start" type="number" step="0.05" value="0.25"></div>

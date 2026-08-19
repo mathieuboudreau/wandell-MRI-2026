@@ -1,5 +1,10 @@
 ::: {.content-visible when-format="html"}
 
+<!-- No caption here. This include is wrapped in a Quarto figure div in
+     ch10-inversion-recovery.qmd, which supplies the caption so the figure
+     is numbered and cross-referenceable like every other figure in the
+     book. Adding a <p class="caption"> back would double it up. -->
+
 <!-- Relies on figures.css, plotly-cartesian.min.js, qmrust_wasm.js (from
      includes/fig-t1-equations.qmd) and data-t1map.js + ir-shared.js (from
      includes/fig-ir-mag-vs-signal.qmd), all of which appear earlier in ch10. -->
@@ -31,19 +36,6 @@
  </div>
 </div>
 
-<p class="caption">Designing a FLAIR protocol on a brain carrying two synthetic
-periventricular lesions, at a fixed TR of 10 s. Left: signal magnitude against inversion
-time for white matter, grey matter, cerebrospinal fluid and lesion, at the chosen TE; the
-dotted line is the chosen TI and the open circle is where the nulling condition puts the
-CSF null. Right: the image that protocol produces. It opens on a protocol that is wrong
-in both respects — TI = 0.60 s leaves the ventricles bright, and TE = 8 ms leaves the
-lesions indistinguishable from the white matter around them. <b>Null CSF + T2-weight</b>
-sets both at once: TI from the nulling condition rather than from
-0.69&nbsp;<i>T</i><sub>1</sub>, which for CSF is far too long, and TE out to 150 ms.
-Either alone is not enough, which is the difference between a T1-FLAIR and a T2-FLAIR.
-Lesion tissue follows the class
-example: <i>T</i><sub>1</sub> raised 10% and <i>T</i><sub>2</sub> doubled over the white
-matter it replaces, with <i>T</i><sub>2</sub> taken as <i>T</i><sub>1</sub>/10 throughout.</p>
 
 </div>
 
@@ -58,12 +50,18 @@ matter it replaces, with <i>T</i><sub>2</sub> taken as <i>T</i><sub>1</sub>/10 t
      equation loses its denominator (cos 90 = 0) and reduces to the grouped form
      the chapter derives, times the spin-echo factor:
 
-         S = C exp(-TE/T2) (1 + exp(-TR/T1) - 2 exp(-TI/T1))
+         S = C exp(-TE/T2) (1 - 2 exp(-TI/T1) + exp(-(TR-TE)/T1))
 
-     qMRust evaluates the bracket through its inversion_recovery forward model
-     with a = 1 + exp(-TR/T1) and b = -2, the same a/b parameterisation the
-     equations figure uses. exp(-TE/T2) is a per-voxel scale applied afterwards,
-     so it costs nothing to move TE.
+     The recovery term uses TR - TE, not TR, to match eq-ch10-null-general in
+     the chapter, which for a spin-echo readout writes it as TR - TE_last. This
+     figure reads out a single echo, so the last echo is the only echo and
+     TE_last = TE.
+
+     qMRust evaluates the TI-dependent part (1 - 2 exp(-TI/T1)) through its
+     inversion_recovery forward model with a = 1, b = -2. The exp(-(TR-TE)/T1)
+     term and the exp(-TE/T2) scale are added per voxel afterwards. Keeping them
+     out of the table is what lets TE stay instant: fold TE into the table and
+     every TE step would mean rebuilding it with ~110 qMRust calls.
 
      T2 = T1/10 throughout, and lesion voxels get T1 x 1.1 and T2 x 2 -- the
      convention the qMRLab class example uses to build this phantom. */
@@ -91,7 +89,7 @@ matter it replaces, with <i>T</i><sub>2</sub> taken as <i>T</i><sub>1</sub>/10 t
   var tiGrid = IR.linspace(0.001, TI_MAX, NTI);
   var teGrid = IR.linspace(0.0, TE_MAX, NTE);
   var map = null, lesion = null, T2map = null;
-  var lut = null, lutTR = null;         // bracket table, rebuilt when TR moves
+  var lut = null;                       // TI-dependent table, built once
   var TISSUE = null;
 
   function buildPhantom() {
@@ -130,19 +128,21 @@ matter it replaces, with <i>T</i><sub>2</sub> taken as <i>T</i><sub>1</sub>/10 t
     ];
   }
 
-  /** Bracket (1 + e^-TR/T1 - 2 e^-TI/T1) over a T1 x TI grid, via qMRust. */
-  function buildLut(TR) {
+  /** (1 - 2 e^-TI/T1) over a T1 x TI grid, via qMRust. TE-independent, so this
+      is built once and both sliders read out of it. */
+  function buildLut() {
     var cfg = IR.recipe(lutTi, "complex");
     var table = new Float64Array(NBIN * NLUT);
     for (var b = 0; b < NBIN; b++) {
       var T1 = T1_LO + (T1_HI - T1_LO) * (b + 0.5) / NBIN;
-      table.set(IR.forward(cfg, T1, 1 + Math.exp(-TR / T1), -2.0), b * NLUT);
+      table.set(IR.forward(cfg, T1, 1.0, -2.0), b * NLUT);
     }
-    lut = table; lutTR = TR;
+    lut = table;
   }
-  function bracket(T1, tiIdx) {
+  function bracket(T1, tiIdx, TE) {
     var b = Math.floor((T1 - T1_LO) / (T1_HI - T1_LO) * NBIN);
-    return lut[Math.max(0, Math.min(NBIN - 1, b)) * NLUT + tiIdx];
+    return lut[Math.max(0, Math.min(NBIN - 1, b)) * NLUT + tiIdx] +
+           Math.exp(-(TR - TE) / T1);
   }
   function tiIndex(ti) {
     var k = Math.round((ti - lutTi[0]) / (lutTi[1] - lutTi[0]));
@@ -163,14 +163,15 @@ matter it replaces, with <i>T</i><sub>2</sub> taken as <i>T</i><sub>1</sub>/10 t
     for (var v = 0; v < map.T1map.length; v++) {
       var t1 = map.T1map[v];
       if (!map.mask[v] || !Number.isFinite(t1) || t1 <= 0) { out[v] = null; continue; }
-      out[v] = Math.abs(bracket(t1, k) * Math.exp(-s.TE / T2map[v]));
+      out[v] = Math.abs(bracket(t1, k, s.TE) * Math.exp(-s.TE / T2map[v]));
     }
     return out;
   }
 
   /** Signal for one tissue at (TI, TE). */
   function sig(T1, T2, TI, TE, TRv) {
-    return Math.abs((1 + Math.exp(-TRv / T1) - 2 * Math.exp(-TI / T1)) * Math.exp(-TE / T2));
+    return Math.abs((1 - 2 * Math.exp(-TI / T1) + Math.exp(-(TRv - TE) / T1)) *
+                    Math.exp(-TE / T2));
   }
 
   /* Two stacked panels sharing one legend. The top is the inversion recovery the
@@ -196,7 +197,7 @@ matter it replaces, with <i>T</i><sub>2</sub> taken as <i>T</i><sub>1</sub>/10 t
                     legendgroup: t.label, showlegend: false,
                     line: { color: t.c }, xaxis: "x2", yaxis: "y2" });
     });
-    var nullCsf = tiNull(4.00, s.TR);
+    var nullCsf = tiNull(4.00, s.TR - s.TE);
     traces.push({ x: [nullCsf], y: [0], mode: "markers", name: "CSF null",
                   marker: { size: 11, color: "rgba(0,0,0,0)",
                             line: { color: "#333", width: 1.6 } },
@@ -275,7 +276,6 @@ matter it replaces, with <i>T</i><sub>2</sub> taken as <i>T</i><sub>1</sub>/10 t
     var s = state();
     $("f-tival").textContent = s.TI.toFixed(2);
     $("f-teval").textContent = Math.round(s.TE * 1000);
-    if (lutTR !== s.TR) { buildLut(s.TR); }
     drawCurves(s); drawMap(s); readout(s);
   }
 
@@ -289,6 +289,7 @@ matter it replaces, with <i>T</i><sub>2</sub> taken as <i>T</i><sub>1</sub>/10 t
     wasm_bindgen({ module_or_path: "interactive/qmrust_wasm_bg.wasm" }).then(function () {
       setTimeout(function () {
         buildPhantom();
+        buildLut();
         redraw();
         // Both are pure lookups against the precomputed table, so they can
         // track the drag.
@@ -297,8 +298,8 @@ matter it replaces, with <i>T</i><sub>2</sub> taken as <i>T</i><sub>1</sub>/10 t
         // Both halves of the answer at once: TI on the CSF null, and a TE long
         // enough that the lesion actually separates from white matter.
         $("f-null").addEventListener("click", function () {
-          $("f-ti").value = tiNull(4.00, TR).toFixed(2);
           $("f-te").value = String(TE_T2W);
+          $("f-ti").value = tiNull(4.00, TR - TE_T2W / 1000).toFixed(2);
           redraw();
         });
       }, 20);
