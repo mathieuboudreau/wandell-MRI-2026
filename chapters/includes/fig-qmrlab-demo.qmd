@@ -1,18 +1,20 @@
 ::: {.content-visible when-format="html"}
 
-<!-- This include deliberately does NOT load interactive/figures.css,
-     plotly-cartesian.min.js, or qmrust_wasm.js. Its only consumer,
-     chapters/ch10-demo-qmrlab.qmd, already pulls all three in through
-     includes/fig-t1-equations.qmd, which sits earlier on that page.
+<!-- This include loads no shared assets of its own. Its only consumer,
+     chapters/ch10-inversion-recovery.qmd, has already pulled them in by the
+     time it appears: figures.css, plotly-cartesian.min.js and qmrust_wasm.js
+     from includes/fig-t1-equations.qmd, and data-t1map.js plus ir-shared.js
+     from includes/fig-ir-mag-vs-signal.qmd. Order on the page is
+     fig-t1-equations -> fig-ir-mag-vs-signal -> this one.
      Loading qmrust_wasm.js a second time is not merely wasteful: the file
      opens with a top-level `let wasm_bindgen`, and a redeclaration in the
      global lexical scope is a SyntaxError that kills the second script.
-     If this figure is ever used on a page without fig-t1-equations.qmd,
-     those three tags have to come back. -->
+     If this figure is ever used on a page without those two includes, the
+     asset tags have to come back. -->
 
 <div class="qmrust-figure">
 
-<p id="q-status" style="font-size:12px;color:#6a6a6a;margin:0 0 10px"></p>
+<p id="q-status" hidden style="font-size:12px;color:#a11;margin:0 0 10px"></p>
 
 <div style="display:flex;flex-wrap:nowrap;gap:16px;align-items:flex-start;overflow-x:auto">
   <div id="q-curves" style="flex:1 1 430px;min-width:400px"></div>
@@ -34,90 +36,29 @@ inversion-recovery signals themselves are computed by qMRust in WebAssembly as t
 
 </div>
 
-<script src="interactive/data-t1map.js"></script>
 <script>
 (function () {
   "use strict";
   var $ = function (id) { return document.getElementById(id); };
   var TNR = "Times New Roman";
   var CFGP = { showLink: false, displayModeBar: false, responsive: true };
-  /* The VFA fit of this dataset reads high, and not by a constant factor:
-     k-means (k=3) over its 4668 fitted voxels gives 1.12 / 1.85 / 3.57 s where
-     3 T literature is about 0.90 / 1.35 / 4.00 s. VFA's bias grows with T1, so
-     a single multiplier cannot fix both ends -- it would leave CSF near 2.9 s.
-     Instead the map is warped through those three control points with a
-     monotonic piecewise-linear curve, which is what a T1-dependent calibration
-     actually looks like. The curve values below are the anchors themselves, so
-     the nulls on the left still mark where the image on the right goes dark.
-     This is a pedagogical recalibration, not the raw fit. */
-  var ANCHOR = [                    // [fitted, target] in seconds
-    [0.00, 0.00],
-    [1.12, 0.90],                   // white matter
-    [1.85, 1.35],                   // grey matter
-    [3.57, 4.00]                    // CSF
-  ];
-  function remapT1(x) {
-    for (var i = 1; i < ANCHOR.length; i++) {
-      if (x <= ANCHOR[i][0]) {
-        var x0 = ANCHOR[i-1][0], y0 = ANCHOR[i-1][1];
-        var x1 = ANCHOR[i][0],   y1 = ANCHOR[i][1];
-        return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
-      }
-    }
-    var n = ANCHOR.length - 1;      // extrapolate along the last segment
-    var sx0 = ANCHOR[n-1][0], sy0 = ANCHOR[n-1][1];
-    var sx1 = ANCHOR[n][0],   sy1 = ANCHOR[n][1];
-    return sy1 + (sy1 - sy0) / (sx1 - sx0) * (x - sx1);
-  }
-  var TISSUES = [
-    { label: "White matter",        T1: ANCHOR[1][1] },
-    { label: "Grey matter",         T1: ANCHOR[2][1] },
-    { label: "Cerebrospinal fluid", T1: ANCHOR[3][1] }
-  ];
+  /* T1 recalibration, tissue list, qmrust wrappers and the grid/crop helpers
+     all live in interactive/ir-shared.js, so this figure and the
+     magnetization-vs-signal figure above it cannot disagree about which
+     voxel is which tissue. */
+  var TISSUES = IR.TISSUES;
+  var recipe = IR.recipe, forward = IR.forward;
+  var grid = IR.grid, linspace = IR.linspace, axis = IR.axis;
+
   var TI_MAX = 5, NTI = 400;            // TI samples for the drawn curves
   var NLUT = 150;                       // TI samples for the image lookup
   var NBIN = 100;                       // T1 bins for the image lookup
   var MODE = "magnitude";               // this figure shows |Mz| only
 
-  /* ---- thin qmrust wrappers (recipe/forward are private to app-ir.js) ---- */
-  function recipe(ti, method) {
-    return "model: inversion_recovery\nmethod: " + method + "\n" +
-           "inversion_times: [" + ti.map(String).join(", ") + "]\n";
-  }
-  function forward(cfg, t1, a, b) {
-    return JSON.parse(wasm_bindgen.forward(cfg, new Float64Array([t1, a, b]), "", ""))
-             .map(function (s) { return s.value; });
-  }
-  function decodeBase64(b64) {
-    var bin = atob(b64), n = bin.length, out = new Uint8Array(n);
-    for (var i = 0; i < n; i++) { out[i] = bin.charCodeAt(i); }
-    return out;
-  }
-  function grid(flat, nx, ny, offset, stride) {
-    var out = new Array(ny);
-    for (var i = 0; i < ny; i++) {
-      var row = new Array(nx);
-      for (var j = 0; j < nx; j++) { row[j] = flat[offset + (j * ny + (ny - 1 - i)) * stride]; }
-      out[i] = row;
-    }
-    return out.reverse().map(function (r) { return r.reverse(); });
-  }
-  function linspace(a, b, n) {
-    var o = new Array(n), d = (b - a) / (n - 1);
-    for (var i = 0; i < n; i++) { o[i] = a + i * d; }
-    return o;
-  }
-  function axis(extra) {
-    return Object.assign({ showline: true, linecolor: "black", mirror: false,
-      ticks: "outside", tickfont: { family: TNR, size: 13 }, zeroline: false }, extra || {});
-  }
-
   var tiGrid  = linspace(0.001, TI_MAX, NTI);
   var lutTi   = linspace(0.001, TI_MAX, NLUT);
   var curves = {};      // mode -> [ [y per tissue], ... ]
   var lut = {};         // mode -> Float64Array(NBIN * NLUT)
-  var T1map = null, nx = 0, ny = 0, maskArr = null;
-  var BBOX = null;   // tight crop around the mask
   var t1Lo = 0.05, t1Hi = 5.0;
 
   /* ---- one-time Rust work -------------------------------------------------
@@ -146,54 +87,17 @@ inversion-recovery signals themselves are computed by qMRust in WebAssembly as t
     });
   }
 
-  /* The VFA fit is not redone here. utility/precompute-t1map.js runs the same
-     qMRust fit_volume offline and writes interactive/data-t1map.js, so the page
-     loads 47 kB of fitted T1 rather than 277 kB of raw VFA volume. It arrives as
-     raw fitted T1 in seconds, float32, masked voxels only in flat-index order;
-     the recalibration above stays here, where it is visible and can be retuned
-     without regenerating the data. */
-  function loadT1Map() {
-    nx = T1MAP.dims[0]; ny = T1MAP.dims[1];
-    maskArr = decodeBase64(T1MAP.mask);
-    var fit = new Float32Array(decodeBase64(T1MAP.t1).buffer);
-    T1map = new Float64Array(nx * ny);
-    for (var v = 0, k = 0; v < T1map.length; v++) {
-      if (maskArr[v]) { T1map[v] = remapT1(fit[k++]); }
-    }
-  }
-
-  /* The acquisition FOV is mostly empty around the head. Crop to the mask's
-     bounding box so the brain fills the panel rather than a black border. */
-  function computeBBox() {
-    var m = grid(maskArr, nx, ny, 0, 1), pad = 2;
-    var r0 = 1e9, r1 = -1, c0 = 1e9, c1 = -1;
-    for (var i = 0; i < m.length; i++) {
-      for (var j = 0; j < m[i].length; j++) {
-        if (m[i][j]) {
-          if (i < r0) r0 = i; if (i > r1) r1 = i;
-          if (j < c0) c0 = j; if (j > c1) c1 = j;
-        }
-      }
-    }
-    if (r1 < 0) { BBOX = null; return; }
-    BBOX = { r0: Math.max(0, r0 - pad), r1: Math.min(m.length - 1, r1 + pad),
-             c0: Math.max(0, c0 - pad), c1: Math.min(m[0].length - 1, c1 + pad) };
-  }
-  function cropGrid(g) {
-    if (!BBOX) { return g; }
-    return g.slice(BBOX.r0, BBOX.r1 + 1).map(function (row) {
-      return row.slice(BBOX.c0, BBOX.c1 + 1);
-    });
-  }
+  var map = null;
+  function cropGrid(g) { return IR.cropGrid(g, map.bbox); }
 
   /** Synthetic IR image at one TI, read out of the precomputed Rust table. */
   function irImage(ti) {
     var k = Math.round((ti - lutTi[0]) / (lutTi[1] - lutTi[0]));
     k = Math.max(0, Math.min(NLUT - 1, k));
-    var table = lut[MODE], out = new Array(T1map.length);
-    for (var v = 0; v < T1map.length; v++) {
-      if (!maskArr[v] || !Number.isFinite(T1map[v]) || T1map[v] <= 0) { out[v] = null; continue; }
-      var b = Math.floor((T1map[v] - t1Lo) / (t1Hi - t1Lo) * NBIN);
+    var table = lut[MODE], out = new Array(map.T1map.length);
+    for (var v = 0; v < map.T1map.length; v++) {
+      if (!map.mask[v] || !Number.isFinite(map.T1map[v]) || map.T1map[v] <= 0) { out[v] = null; continue; }
+      var b = Math.floor((map.T1map[v] - t1Lo) / (t1Hi - t1Lo) * NBIN);
       b = Math.max(0, Math.min(NBIN - 1, b));
       out[v] = table[b * NLUT + k];
     }
@@ -227,7 +131,7 @@ inversion-recovery signals themselves are computed by qMRust in WebAssembly as t
     // The T1 map supplies the per-voxel T1 the inversion-recovery image is
     // computed from; it is not itself displayed.
     var traces = [
-      { type: "heatmap", z: cropGrid(grid(irImage(ti), nx, ny, 0, 1)),
+      { type: "heatmap", z: cropGrid(grid(irImage(ti), map.nx, map.ny, 0, 1)),
         colorscale: [[0, "rgb(0,0,0)"], [1, "rgb(255,255,255)"]],
         zmin: 0, zmax: 1,
         colorbar: { title: { text: "|S|", side: "top", font: { family: TNR, size: 13 } },
@@ -254,27 +158,30 @@ inversion-recovery signals themselves are computed by qMRust in WebAssembly as t
     drawMaps(ti);
   }
 
+  /* The status paragraph stays hidden on the happy path -- progress and timing
+     chatter is developer interest, not something a reader of the book needs.
+     It is only revealed when the figure cannot be drawn, so a failure explains
+     itself instead of leaving an empty box. */
+  function fail(msg, e) {
+    var el = $("q-status");
+    el.textContent = msg;
+    el.hidden = false;
+    if (e) { console.error(e); }
+  }
+
   window.addEventListener("load", function () {
-    if (typeof Plotly === "undefined") { $("q-status").textContent = "Plotly failed to load."; return; }
-    $("q-status").textContent = "Starting qMRust…";
+    if (typeof Plotly === "undefined") { fail("Plotly failed to load."); return; }
     wasm_bindgen({ module_or_path: "interactive/qmrust_wasm_bg.wasm" }).then(function () {
-      $("q-status").textContent = "Precomputing signal tables in Rust…";
       setTimeout(function () {
-        var t0 = performance.now();
         precompute();
-        $("q-status").textContent = "Loading the precomputed T₁ map…";
         setTimeout(function () {
-          loadT1Map();
-          computeBBox();
-          $("q-status").textContent = "Ready — inversion-recovery signals computed in " +
-            "Rust/WebAssembly in " + (performance.now() - t0).toFixed(0) + " ms";
+          map = IR.loadT1Map();
           redraw();
           $("q-ti").addEventListener("input", redraw);
         }, 20);
       }, 20);
     }).catch(function (e) {
-      $("q-status").textContent = "qMRust failed to start: " + e;
-      console.error(e);
+      fail("qMRust failed to start: " + e, e);
     });
   });
 })();

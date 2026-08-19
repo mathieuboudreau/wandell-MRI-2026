@@ -1,7 +1,14 @@
 /* Scoped to the wrapper _static/qmrust-figures.js inserts, so nothing here
    reaches the rest of the chapter. */
+/* margin-bottom separates the figure block from the prose that follows it. The
+   caption is the last thing in the wrapper and carries no bottom margin of its
+   own, so without this its final line sits directly on top of the next
+   paragraph. Body paragraphs are 17px apart in this theme; a figure is a larger
+   unit than a paragraph, so it gets more than that. Note that overflow-x:auto
+   makes this element a block formatting context, so this margin cannot collapse
+   into the following paragraph -- the gap below is the full amount. */
 .qmrust-figure { --qmrust-rule:#e2e2e2; --qmrust-muted:#6a6a6a;
-                 overflow-x:auto; text-align:left;
+                 overflow-x:auto; text-align:left; margin-bottom:1.75rem;
                  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif; }
 /* Match the CSS situation the notebook figures render in. Their output sits
    inside Jupyter's container and so picks up
@@ -27,6 +34,20 @@
 .qmrust-figure .caption { font-size:.825rem; line-height:1.45;
                           color:hsl(210, 10.3%, 47.7%); margin:10px 0 0;
                           font-family:var(--bs-body-font-family, inherit); }
+
+/* Two buttons welded into one on/off switch: shared border, square inner
+   corners, and the pressed side filled. aria-pressed carries both the state
+   and the styling, so there is no separate class to keep in sync. */
+.qmrust-toggle { display:inline-flex; margin:0 0 12px; }
+.qmrust-toggle button { font: inherit; font-size:13px; line-height:1;
+                        padding:7px 14px; cursor:pointer;
+                        border:1px solid #1c1c1c; background:#fff; color:#1c1c1c;
+                        margin:0; }
+.qmrust-toggle button:first-child { border-radius:4px 0 0 4px; border-right-width:0; }
+.qmrust-toggle button:last-child  { border-radius:0 4px 4px 0; }
+.qmrust-toggle button[aria-pressed="true"] { background:#1c1c1c; color:#fff; }
+.qmrust-toggle button[aria-pressed="false"]:hover { background:#f0f0f0; }
+.qmrust-toggle button:focus-visible { outline:2px solid #4a90d9; outline-offset:2px; }
 
 .qmrust-figure .eq { font-size:12.5px; color:var(--qmrust-muted); margin:0 0 10px;
                      font-family:ui-monospace,Menlo,monospace; }

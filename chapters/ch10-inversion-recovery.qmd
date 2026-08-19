@@ -128,6 +128,8 @@ The presence of the zero-crossing makes the sequence particularly useful: choosi
 
 The graphs above plot $M_z$ itself, with the values before the zero crossing shown as negative.  The scanner records a complex signal, but inversion recovery protocols usually store magnitude images, and a magnitude is always positive.  Taking the absolute value folds the negative part of the recovery upward, so the measured curve descends to zero at $\mathrm{TI}_{\text{null}}$ and then climbs again — the V shape on the right.  The position of that null is a direct read on $T_1$, and tissues with different $T_1$ values null at different inversion times.
 
+{{< include "includes/fig-ir-mag-vs-signal.qmd" >}}
+
 Two consequences follow from the fold, and both come back later.  The measured curve is no longer a single exponential, so it cannot be fitted as one without first restoring the sign of the early points (@sec-ch10-t1-map).  And the null is not really a zero in the data: noise in a magnitude image is Rician, which keeps the measured value above zero even where the true signal vanishes, so the bottom of the V is the least reliable part of the curve.
 
 ## The contrast changes for different TI (inversion times)

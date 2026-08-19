@@ -3,9 +3,6 @@
 <link rel="stylesheet" href="interactive/figures.css">
 
 <div class="qmrust-figure">
-<!-- Labels deliberately avoid the source chapter's equation numbering; the book
-     numbers these differently. See the provenance comment in ch10. -->
-<p class="eq">qmrust::forward · general equation (a = C(1+e<sup>−TR/T1</sup>), b = −2C) vs long-TR approximation (a = C, b = −2C)</p>
 <div id="fig23"></div>
 <p class="caption">Signal recovery curves simulated using the long-TR approximation (solid) and the general equation (dashed) with TR = 5 s, for <i>T</i><sub>1</sub> values between 0.25 and 5 s. Drag the slider to change <i>T</i><sub>1</sub>.</p>
 <div class="panel" id="f23panel" hidden>
